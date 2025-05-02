@@ -1,6 +1,6 @@
 # HogUtils
 
-Utility Python script to manipulate Descent 3 HOG files
+Utility Python script to manipulate the Descent 3 HOG container format. Only depends on the standard library.
 
 ```
 HOG FILE FORMAT v2.0, used in Descent 3
