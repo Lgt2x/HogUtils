@@ -1,0 +1,7 @@
+[project]
+name = "hogutils"
+version = "0.1.0"
+description = "Utility scripts for manipulating Descent 3 HOG files"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
