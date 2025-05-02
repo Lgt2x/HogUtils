@@ -1,8 +1,5 @@
 import argparse
 import pathlib
-import sys
-import os
-from pathlib import Path
 from dataclasses import dataclass, field
 from struct import unpack
 
@@ -25,7 +22,7 @@ class HogEntry:
     size: int = 0
     timestamp: int = 0
     hogfile: str = ""
-    content: list[bytes] = field(default_factory=list)
+    content: bytes = b''
 
 
 def format_size(num_bytes: int):
@@ -86,14 +83,31 @@ class HogReader:
             raise FileNotFoundError(f"Could not find output directory {output_dir}")
 
         for name, entry in self.entries.items():
-            with open(name, "wb") as f:
+            with pathlib.Path(output_dir / name).open("wb") as f:
                 f.write(entry.content)
                 print(f"Extracted {name}")
 
     def create(self, output_hog: pathlib.Path):
-        header = HogHeader(tag=HOG_HEADER_TAG, nfiles=len(self.entries), timestamp=0)
-        with output_hog.open("r") as f:
-            pass
+        with output_hog.open("wb") as f:
+            # Header
+            f.write(HOG_HEADER_TAG.encode('ascii'))
+            f.write(int(len(self.entries)).to_bytes(4, 'little'))
+            offset = len(HOG_HEADER_TAG) + 4 + 4 + 56 + (4 + 4 + 4 + 36) * len(self.entries)
+            f.write(offset.to_bytes(4, 'little'))
+            f.write(bytearray(0xff for _ in range(56)))
+
+
+            # File entries
+            for name, entry in sorted(self.entries.items(), key=lambda entry: entry[0].lower()):
+                f.write(name.encode('ascii'))
+                f.write(int(0).to_bytes(36 - len(name))) # Padding
+                f.write(int(entry.flags).to_bytes(4, 'little'))
+                f.write(int(entry.size).to_bytes(4, 'little'))
+                f.write(int(entry.timestamp).to_bytes(4, 'little'))
+
+            # Content
+            for _, entry in sorted(self.entries.items(), key=lambda entry: entry[0].lower()):
+                f.write(entry.content)
 
 
     def print_content(self):
@@ -139,13 +153,12 @@ if __name__ == "__main__":
     for input_file in [f for file_group in args.input for f in file_group]:
         reader.read_file(pathlib.Path(input_file))
 
-    # try:
-    if True:
+    try:
         if args.action == "show":
             reader.print_content()
         elif args.action == "extract":
-            reader.extract(output=args.output)
+            reader.extract(output_dir=pathlib.Path(args.output[0]))
         elif args.action == "create":
-            reader.create(args.output)
-    # except Exception as e:
-    #     print(f"Error: {e.args}")
+            reader.create(pathlib.Path(args.output[0]))
+    except Exception as e:
+        print(f"Error: {e.args}")
