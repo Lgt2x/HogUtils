@@ -18,19 +18,26 @@ FILE NFILES-1		[filelen(NFILES -1)]
 ## Usage
 
 ```
-usage: hogutils [-h] [-i INPUT [INPUT ...]] [-o OUTPUT] {show,extract,create}
+usage: hogutils [-h] [-i INPUT [INPUT ...]] [-o OUTPUT] {show,extract,combine}
 
 Display & Edit Descent 3 HOG files
 
 positional arguments:
-  {show,extract,create}
+  {show,extract,combine}
                         - show: display the input HOG file(s) content to standard output, or to output file is specified
                         - extract: extract files' content into the output directory specified with --output
-                        - create: create a new output HOG file from input files, HOG or not
+                        - combine: create a new output HOG file from all input files, HOG or not
 
 options:
   -h, --help            show this help message and exit
   -i, --input INPUT [INPUT ...]
                         Input file to read
   -o, --output OUTPUT   Output file or directory
+```
+## Example
+
+Create a new HOG file from all combined base game HOG files:
+
+```bash
+python hogutils.py combine -i d3-linux.hog d3.hog extra.hog extra1.hog extra13.hog ppics.hog -o combined.hog
 ```

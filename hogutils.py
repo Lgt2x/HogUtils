@@ -63,6 +63,8 @@ class HogReader:
         header.file_data_offset = self.read_int32()
         self.read_bytes(56)  # Reserved
 
+        print(f"Reading {header.nfiles} files from {input_file}")
+
         # Read each file
         names: list[str] = []
         for _ in range(header.nfiles):
@@ -87,8 +89,10 @@ class HogReader:
                 f.write(entry.content)
                 print(f"Extracted {name}")
 
-    def create(self, output_hog: pathlib.Path):
+    def combine(self, output_hog: pathlib.Path):
         with output_hog.open("wb") as f:
+            print(f"Writing {len(self.entries)} files to {output_hog}")
+
             # Header
             f.write(HOG_HEADER_TAG.encode('ascii'))
             f.write(int(len(self.entries)).to_bytes(4, 'little'))
@@ -136,10 +140,10 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "action",
-        choices=["show", "extract", "create"],
+        choices=["show", "extract", "combine"],
         help="""- show: display the input HOG file(s) content to standard output, or to output file is specified
 - extract: extract files' content into the output directory specified with --output
-- create: create a new output HOG file from input files, HOG or not
+- combine: create a new output HOG file from all input files, HOG or not
 """,
     )
     parser.add_argument(
@@ -158,7 +162,7 @@ if __name__ == "__main__":
             reader.print_content()
         elif args.action == "extract":
             reader.extract(output_dir=pathlib.Path(args.output[0]))
-        elif args.action == "create":
-            reader.create(pathlib.Path(args.output[0]))
+        elif args.action == "combine":
+            reader.combine(pathlib.Path(args.output[0]))
     except Exception as e:
         print(f"Error: {e.args}")
