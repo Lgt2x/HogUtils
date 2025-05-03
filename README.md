@@ -18,7 +18,7 @@ FILE NFILES-1		[filelen(NFILES -1)]
 ## Usage
 
 ```
-usage: hogutils [-h] [-i INPUT [INPUT ...]] [-o OUTPUT] {show,extract,combine}
+usage: hogutils [-h] [-i INPUT [INPUT ...]] [-f FILE_INPUT] [-o OUTPUT] {show,extract,combine}
 
 Display & Edit Descent 3 HOG files
 
@@ -32,6 +32,8 @@ options:
   -h, --help            show this help message and exit
   -i, --input INPUT [INPUT ...]
                         Input file to read
+  -f, --file-input FILE_INPUT
+                        Read input file names from a file, one file name per line
   -o, --output OUTPUT   Output file or directory
 ```
 ## Example
