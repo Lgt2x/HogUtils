@@ -18,11 +18,12 @@ class HogHeader:
 
 @dataclass
 class HogEntry:
+    name: str = "" # Name with original case
     flags: int = 0
     size: int = 0
     timestamp: int = 0
-    hogfile: str = ""
-    content: bytes = b''
+    hogfile: str = "" # HOG file it was extracted from
+    content: bytes = b""
 
 
 def format_size(num_bytes: int):
@@ -51,7 +52,8 @@ class HogReader:
         if header.tag != HOG_HEADER_TAG:
             if input_file.suffix.lower() != ".hog":
                 # Also accept non-HOG files
-                self.entries[input_file.name] = HogEntry(size=len(self.data))
+                self.entries[input_file.name.lower()] = HogEntry(size=len(self.data), name=input_file.name)
+                self.entries[input_file.name.lower()].content = self.data
                 return
             print(
                 f"Could not find Hog file {HOG_HEADER_TAG} identifier in {input_file}. Got {header.tag} instead"
@@ -65,16 +67,19 @@ class HogReader:
 
         print(f"Reading {header.nfiles} files from {input_file}")
 
-        # Read each file
+        # Read each file meta data
         names: list[str] = []
         for _ in range(header.nfiles):
-            names.append(self.read_string(36))
+            name = self.read_string(36)
+            names.append(name.lower()) # Store as lowercase in the map
             self.entries[names[-1]] = HogEntry()
             self.entries[names[-1]].flags = self.read_int32()
             self.entries[names[-1]].size = self.read_int32()
             self.entries[names[-1]].timestamp = self.read_int32()
             self.entries[names[-1]].hogfile = input_file.name
+            self.entries[names[-1]].name = name # Keep original case
 
+        # Read file contents
         for filename in names:
             self.entries[filename].content = self.read_bytes(
                 self.entries[filename].size
@@ -85,6 +90,7 @@ class HogReader:
             raise FileNotFoundError(f"Could not find output directory {output_dir}")
 
         for name, entry in self.entries.items():
+            # Extract to file with a lowercase name
             with pathlib.Path(output_dir / name).open("wb") as f:
                 f.write(entry.content)
                 print(f"Extracted {name}")
@@ -94,32 +100,36 @@ class HogReader:
             print(f"Writing {len(self.entries)} files to {output_hog}")
 
             # Header
-            f.write(HOG_HEADER_TAG.encode('ascii'))
-            f.write(int(len(self.entries)).to_bytes(4, 'little'))
-            offset = len(HOG_HEADER_TAG) + 4 + 4 + 56 + (4 + 4 + 4 + 36) * len(self.entries)
-            f.write(offset.to_bytes(4, 'little'))
-            f.write(bytearray(0xff for _ in range(56)))
-
+            f.write(HOG_HEADER_TAG.encode("ascii"))
+            f.write(int(len(self.entries)).to_bytes(4, "little"))
+            offset = (
+                len(HOG_HEADER_TAG) + 4 + 4 + 56 + (4 + 4 + 4 + 36) * len(self.entries)
+            )
+            f.write(offset.to_bytes(4, "little"))
+            f.write(bytearray(0xFF for _ in range(56)))
 
             # File entries
-            for name, entry in sorted(self.entries.items(), key=lambda entry: entry[0].lower()):
-                f.write(name.encode('ascii'))
-                f.write(int(0).to_bytes(36 - len(name))) # Padding
-                f.write(int(entry.flags).to_bytes(4, 'little'))
-                f.write(int(entry.size).to_bytes(4, 'little'))
-                f.write(int(entry.timestamp).to_bytes(4, 'little'))
+            for _, entry in sorted(
+                self.entries.items(), key=lambda entry: entry[0].lower()
+            ):
+                f.write(entry.name.encode("ascii"))
+                f.write(int(0).to_bytes(36 - len(entry.name)))  # Padding
+                f.write(int(entry.flags).to_bytes(4, "little"))
+                f.write(int(entry.size).to_bytes(4, "little"))
+                f.write(int(entry.timestamp).to_bytes(4, "little"))
 
             # Content
-            for _, entry in sorted(self.entries.items(), key=lambda entry: entry[0].lower()):
+            for _, entry in sorted(
+                self.entries.items(), key=lambda entry: entry[0].lower()
+            ):
                 f.write(entry.content)
-
 
     def print_content(self):
         print(f"Found {len(self.entries)} entries")
         print(f"{'Name':<36}{'Size':<10}{'Flags':<10}{'Timestamp':<12}{'From':<10}")
-        for name, entry in sorted(self.entries.items()):
+        for _, entry in sorted(self.entries.items(), key=lambda entry: entry[0].lower()):
             print(
-                f"{name:<36}{format_size(entry.size):<10}{entry.flags:<10}{entry.timestamp:<12}{entry.hogfile:<10}"
+                f"{entry.name:<36}{format_size(entry.size):<10}{entry.flags:<10}{entry.timestamp:<12}{entry.hogfile:<10}"
             )
 
     def read_string(self, size):
@@ -136,7 +146,9 @@ class HogReader:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        prog="hogutils", description="Display & Edit Descent 3 HOG files", formatter_class=argparse.RawTextHelpFormatter
+        prog="hogutils",
+        description="Display & Edit Descent 3 HOG files",
+        formatter_class=argparse.RawTextHelpFormatter,
     )
     parser.add_argument(
         "action",
@@ -149,20 +161,50 @@ if __name__ == "__main__":
     parser.add_argument(
         "-i", "--input", action="append", nargs="+", help="Input file to read"
     )
+    parser.add_argument(
+        "-f",
+        "--file-input",
+        nargs=1,
+        help="Read input file names from a file, one file name per line",
+    )
     parser.add_argument("-o", "--output", nargs=1, help="Output file or directory")
 
     args = parser.parse_args()
 
+    if not args.input and not args.file_input:
+        print("Error: you must specify either --input or --file-input")
+        exit(1)
+
+    # Read input file(s)
     reader = HogReader()
-    for input_file in [f for file_group in args.input for f in file_group]:
-        reader.read_file(pathlib.Path(input_file))
+    if args.input:
+        for input_file in [f for file_group in args.input for f in file_group]:
+            reader.read_file(pathlib.Path(input_file))
+    if args.file_input:
+        with open(args.file_input[0], "r") as f:
+            while line := f.readline():
+                file = pathlib.Path(line.strip())
+                # Handle case-sensitive file names: also try to open the file with a lowercase name
+                file_lower = pathlib.Path(file.parent / file.name.lower())
+                if file.exists():
+                    reader.read_file(file)
+                elif file_lower.exists():
+                    reader.read_file(file_lower)
+                else:
+                    print(f"Warning: skipping file {file} not found")
 
     try:
         if args.action == "show":
             reader.print_content()
         elif args.action == "extract":
+            if not args.output:
+                print("Error: you must specify an output directory")
+                exit(1)
             reader.extract(output_dir=pathlib.Path(args.output[0]))
         elif args.action == "combine":
+            if not args.output:
+                print("Error: you must specify an output file")
+                exit(1)
             reader.combine(pathlib.Path(args.output[0]))
     except Exception as e:
         print(f"Error: {e.args}")

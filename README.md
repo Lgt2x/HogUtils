@@ -39,5 +39,5 @@ options:
 Create a new HOG file from all combined base game HOG files:
 
 ```bash
-python hogutils.py combine -i d3-linux.hog d3.hog extra.hog extra1.hog extra13.hog ppics.hog -o combined.hog
+python hogutils.py combine --input d3-linux.hog d3.hog extra.hog extra1.hog extra13.hog ppics.hog --output combined.hog
 ```
