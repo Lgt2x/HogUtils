@@ -1,21 +1,12 @@
-# HogUtils
+# Descent 3 Utils
 
-Utility Python script to manipulate the Descent 3 HOG container format. Only depends on the Python standard library.
+Utility Python scripts to manipulate different Descent 3 formats .HOG and .OGF
 
-```
-HOG FILE FORMAT v2.0, used in Descent 3
+## HOG
 
-HOG_TAG_STR		[strlen()]
-NFILES			[int32]
-HDRINFO			[HOG_HDR_SIZE]
-FILE_TABLE		[sizeof(FILE_ENTRY) * NFILES]
-FILE 0			[filelen(FILE 0)]
-FILE 1			[filelen(FILE 1)]
-...
-FILE NFILES-1		[filelen(NFILES -1)]
-```
+HOG is a container format that bundles multiple files.
 
-## Usage
+Use the `hogutils.py` script to operate on HOG files:
 
 ```
 usage: hogutils [-h] [-i INPUT [INPUT ...]] [-f FILE_INPUT] [-o OUTPUT] {show,extract,combine}
@@ -36,10 +27,26 @@ options:
                         Read input file names from a file, one file name per line
   -o, --output OUTPUT   Output file or directory
 ```
-## Example
+### Example
 
 Create a new HOG file from all combined base game HOG files:
 
 ```bash
 python hogutils.py combine --input d3-linux.hog d3.hog extra.hog extra1.hog extra13.hog ppics.hog --output combined.hog
+```
+
+## OGF format
+
+OGF stores mipmap textures. The `ogfextract.py` script can read OGF textures and conert them to .png. OGF textures are typically stored in .HOG files.
+
+```
+usage: ogfextract [-h] [-i INPUT [INPUT ...]] [-o OUTPUT]
+
+Export OGF texture files to PNG
+
+options:
+  -h, --help            show this help message and exit
+  -i, --input INPUT [INPUT ...]
+                        Input OGF file or directory containing OGF files
+  -o, --output OUTPUT   Output directory
 ```

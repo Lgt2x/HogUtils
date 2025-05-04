@@ -132,7 +132,7 @@ class HogReader:
                 f"{entry.name:<36}{format_size(entry.size):<10}{entry.flags:<10}{entry.timestamp:<12}{entry.hogfile:<10}"
             )
 
-    def read_string(self, size):
+    def read_string(self, size: int):
         return self.read_bytes(size).decode("ascii", "ignore").rstrip("\x00").strip()
 
     def read_int32(self):
